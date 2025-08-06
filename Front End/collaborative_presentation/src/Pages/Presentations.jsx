@@ -1,137 +1,49 @@
-// import { useState } from 'react';
-// import SlideEditor from '../Components/SlideEditor';
-// import { v4 as uuidv4 } from 'uuid';
-
-// export default function Presentation() {
-//   const [slides, setSlides] = useState([
-//     {
-//       id: uuidv4(),
-//       blocks: [
-//         {
-//           id: uuidv4(),
-//           x: 100,
-//           y: 100,
-//           width: 300,
-//           height: 150,
-//           content: '### Welcome to slide 1!',
-//         },
-//       ],
-//     },
-//   ]);
-
-//   const [activeSlideId, setActiveSlideId] = useState(slides[0].id);
-
-//   // Add a new blank slide
-//   const addSlide = () => {
-//     const newSlide = {
-//       id: uuidv4(),
-//       blocks: [],
-//     };
-//     setSlides((prev) => [...prev, newSlide]);
-//     setActiveSlideId(newSlide.id);
-//   };
-
-//   // Delete slide by id
-//   const deleteSlide = (id) => {
-//     if (slides.length === 1) {
-//       alert('Cannot delete the last slide.');
-//       return;
-//     }
-//     setSlides((prev) => prev.filter((slide) => slide.id !== id));
-//     if (activeSlideId === id) {
-//       // Switch active slide to first slide if deleted active
-//       setActiveSlideId(slides[0].id);
-//     }
-//   };
-
-//   // Update blocks of the active slide
-//   const updateBlocks = (newBlocks) => {
-//     setSlides((prev) =>
-//       prev.map((slide) =>
-//         slide.id === activeSlideId ? { ...slide, blocks: newBlocks } : slide
-//       )
-//     );
-//   };
-
-//   const activeSlide = slides.find((slide) => slide.id === activeSlideId);
-
-//   return (
-//     <div className="flex h-full max-w-full overflow-hidden">
-//       {/* Left sidebar for slides */}
-//       <div className="w-48 bg-gray-200 p-2 flex flex-col gap-2 overflow-auto">
-//         <button
-//           onClick={addSlide}
-//           className="bg-blue-600 text-white py-1 rounded mb-2"
-//         >
-//           + Add Slide
-//         </button>
-//         {slides.map((slide, index) => (
-//           <div
-//             key={slide.id}
-//             onClick={() => setActiveSlideId(slide.id)}  // <-- Move onClick here
-//             className={`p-2 rounded cursor-pointer ${
-//               slide.id === activeSlideId
-//                 ? 'bg-blue-500 text-white'
-//                 : 'hover:bg-blue-300'
-//             }`}
-//           >
-//             <div className="flex justify-between items-center">
-//               <span>Slide {index + 1}</span>
-//               <button
-//                 onClick={(e) => {
-//                   e.stopPropagation(); // Prevent triggering onClick of parent div
-//                   deleteSlide(slide.id);
-//                 }}
-//                 className="text-red-600 font-bold px-1"
-//                 title="Delete slide"
-//               >
-//                 ✕
-//               </button>
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* Slide editor area */}
-//       <div className="flex-grow p-4 overflow-auto bg-gray-100">
-//         {activeSlide ? (
-//           <SlideEditor
-//             slideId={activeSlide.id}
-//             initialBlocks={activeSlide.blocks}
-//             onBlocksChange={updateBlocks}
-//           />
-//         ) : (
-//           <p>No slide selected</p>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
+import useAxiosPublic from '../utils/useAxiosPublic';
 
 export default function Presentations() {
   const [presentations, setPresentations] = useState([]);
   const [joinId, setJoinId] = useState('');
   const navigate = useNavigate();
   const nickname = localStorage.getItem('nickname');
+  const api = useAxiosPublic();
 
+  // ✅ Fetch available presentations on mount
   useEffect(() => {
-    const dummyData = [
-      { id: 'abc123', title: 'Team Sync' },
-      { id: 'def456', title: 'Design Review' },
-    ];
-    setPresentations(dummyData);
+    api.get('/presentations')
+      .then((res) => setPresentations(res.data))
+      .catch((err) => {
+        console.error('Error fetching presentations:', err);
+        setPresentations([]);
+      });
   }, []);
 
-  const handleCreate = () => {
-    const newId = uuidv4();
-    navigate(`/presentation/${newId}`);
-  };
+  // ✅ Create new presentation
+ const handleCreate = () => {
+  if (!nickname) return alert('Nickname not found in localStorage');
 
+  console.log('Creating presentation for:', nickname);
+
+  api.post('/presentations', {
+    title: 'Untitled Presentation',
+    creator: {
+      id: 'user-' + nickname.toLowerCase(),
+      name: nickname,
+      role: 'Creator',
+    }
+  })
+  .then((res) => {
+    console.log('Presentation created:', res.data);
+    const id = res.data._id;
+    navigate(`/presentation/${id}`);
+  })
+  .catch((err) => {
+    console.error('Error creating presentation:', err.response || err);
+  });
+};
+
+  // ✅ Join an existing presentation by ID
   const handleJoin = () => {
     if (joinId.trim()) {
       navigate(`/presentation/${joinId.trim()}`);
@@ -141,8 +53,9 @@ export default function Presentations() {
   return (
     <div className="min-h-screen p-6 bg-gray-100">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Welcome, {nickname}!</h1>
+        <h1 className="text-3xl font-bold mb-6">Welcome, {nickname || 'Guest'}!</h1>
 
+        {/* Create and Join Section */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <button
             onClick={handleCreate}
@@ -168,21 +81,23 @@ export default function Presentations() {
           </div>
         </div>
 
+        {/* Presentation List */}
         <h2 className="text-xl font-semibold mb-3">Available Presentations:</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {presentations.map((p) => (
+          {presentations.length > 0 ? presentations.map((p) => (
             <div
-              key={p.id}
+              key={p._id}
               className="p-4 bg-white shadow rounded hover:bg-blue-50 cursor-pointer"
-              onClick={() => navigate(`/presentation/${p.id}`)}
+              onClick={() => navigate(`/presentation/${p._id}`)}
             >
               <h3 className="text-lg font-bold">{p.title}</h3>
-              <p className="text-gray-500 text-sm">ID: {p.id}</p>
+              <p className="text-gray-500 text-sm">ID: {p._id}</p>
             </div>
-          ))}
+          )) : (
+            <p className="text-gray-500">No presentations available yet.</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

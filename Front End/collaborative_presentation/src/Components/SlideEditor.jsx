@@ -3,11 +3,17 @@ import { Rnd } from 'react-rnd';
 import ReactMarkdown from 'react-markdown';
 import MarkdownToolbar from './MarkdownToolbar';
 
-export default function SlideEditor({ blocks: initialBlocks, onBlocksChange, canEdit = true }) {
+export default function SlideEditor({
+  slideId,
+  initialBlocks,
+  onBlocksChange,
+  canEdit = true
+}) {
   const [blocks, setBlocks] = useState(initialBlocks || []);
   const [presentMode, setPresentMode] = useState(false);
   const textareasRef = useRef({});
   const [activeBlockId, setActiveBlockId] = useState(null);
+  const saveTimeout = useRef(null);
 
   useEffect(() => {
     setBlocks(initialBlocks || []);
@@ -23,22 +29,24 @@ export default function SlideEditor({ blocks: initialBlocks, onBlocksChange, can
       content: 'New content...',
     };
     const newBlocks = [...blocks, newBlock];
-    setBlocks(newBlocks);
-    onBlocksChange(newBlocks);
+    updateAndSave(newBlocks);
   };
 
   const handleDeleteBlock = (id) => {
     const newBlocks = blocks.filter((block) => block.id !== id);
-    setBlocks(newBlocks);
-    onBlocksChange(newBlocks);
+    updateAndSave(newBlocks);
   };
 
   const updateBlock = (id, changes) => {
     const newBlocks = blocks.map((block) =>
       block.id === id ? { ...block, ...changes } : block
     );
+    updateAndSave(newBlocks);
+  };
+
+  const updateAndSave = (newBlocks) => {
     setBlocks(newBlocks);
-    onBlocksChange(newBlocks);
+    onBlocksChange(newBlocks); // Parent updates DB
   };
 
   const applyFormat = (formatType) => {
@@ -82,16 +90,13 @@ export default function SlideEditor({ blocks: initialBlocks, onBlocksChange, can
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(
-        before.length,
-        before.length + formatted.length
-      );
+      textarea.setSelectionRange(before.length, before.length + formatted.length);
     }, 0);
   };
 
   return (
     <div className="w-full h-full flex flex-col items-center p-4 bg-gray-100 overflow-auto">
-      {/* Top Toolbar + Present Mode Toggle */}
+      {/* Toolbar */}
       <div className="w-full max-w-6xl mb-4 flex items-center justify-between">
         {!presentMode && canEdit && <MarkdownToolbar onFormat={applyFormat} />}
         {!presentMode && canEdit && (
@@ -111,17 +116,13 @@ export default function SlideEditor({ blocks: initialBlocks, onBlocksChange, can
         </button>
       </div>
 
-      {/* Slide Area */}
+      {/* Slide Content */}
       <div
         className="relative bg-white border shadow-xl rounded overflow-hidden"
-        style={{
-          width: '1280px',
-          height: '720px',
-        }}
+        style={{ width: '1280px', height: '720px' }}
       >
         {blocks.map((block) =>
           presentMode ? (
-            // Present mode: just show rendered markdown block at position & size
             <div
               key={block.id}
               style={{
@@ -140,7 +141,6 @@ export default function SlideEditor({ blocks: initialBlocks, onBlocksChange, can
               <ReactMarkdown>{block.content}</ReactMarkdown>
             </div>
           ) : canEdit ? (
-            // Edit mode for Editors and Creator
             <Rnd
               key={block.id}
               default={{
@@ -186,7 +186,6 @@ export default function SlideEditor({ blocks: initialBlocks, onBlocksChange, can
               </div>
             </Rnd>
           ) : (
-            // View-only mode for Viewers
             <div
               key={block.id}
               style={{

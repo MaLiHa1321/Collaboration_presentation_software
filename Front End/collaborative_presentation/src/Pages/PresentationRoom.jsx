@@ -1,76 +1,142 @@
 import { useParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import SlideEditor from '../Components/SlideEditor';
 import SlideList from '../Components/SlideList';
 import UserList from '../Components/UserList';
 import { v4 as uuidv4 } from 'uuid';
+import useAxiosPublic from '../utils/useAxiosPublic';
 
 export default function PresentationRoom() {
-  const { id } = useParams(); // the presentation ID
+  const { id } = useParams(); // Presentation ID from URL
   const nickname = localStorage.getItem('nickname') || 'Guest';
-  const myUserId = 'user-' + nickname.replace(/\s+/g, '-').toLowerCase(); // unique local ID
+  const myUserId = 'user-' + nickname.replace(/\s+/g, '-').toLowerCase();
+  const api = useAxiosPublic();
 
-  const [users, setUsers] = useState([
-    { id: myUserId, name: nickname, role: 'Creator' },
-    { id: 'user-2', name: 'EditorUser', role: 'Editor' },
-    { id: 'user-3', name: 'ViewerUser', role: 'Viewer' }
-  ]);
-
-  const [slides, setSlides] = useState([
-    {
-      id: 's1',
-      blocks: [
-        {
-          id: uuidv4(),
-          x: 100,
-          y: 100,
-          width: 300,
-          height: 150,
-          content: '### Welcome to collaborative slide!',
-        },
-      ],
-    },
-  ]);
-
-  const [currentSlideId, setCurrentSlideId] = useState('s1');
+  const [users, setUsers] = useState([]);
+  const [slides, setSlides] = useState([]);
+  const [currentSlideId, setCurrentSlideId] = useState(null);
 
   const currentUser = users.find(u => u.id === myUserId);
+  
   const isCreator = currentUser?.role === 'Creator';
-  const canEdit = currentUser?.role === 'Editor' || isCreator;
+  const canEdit = isCreator || currentUser?.role === 'Editor';
 
   const activeSlide = slides.find((s) => s.id === currentSlideId);
 
+useEffect(() => {
+  api.get(`/presentations/${id}`)
+    .then((res) => {
+      const fetchedUsers = res.data.users || [];
+      const fetchedSlides = res.data.slides || [];
+
+      const existing = fetchedUsers.find(u => u.id === myUserId);
+      if (!existing) {
+        const newUser = {
+          id: myUserId,
+          name: nickname,
+          role: 'Viewer',
+        };
+        const updatedUsers = [...fetchedUsers, newUser];
+        
+        setUsers(updatedUsers);
+        setSlides(fetchedSlides);
+        if (fetchedSlides.length > 0) setCurrentSlideId(fetchedSlides[0].id);
+
+        return api.patch(`/presentations/${id}`, { users: updatedUsers });
+      } else {
+        setUsers(fetchedUsers);
+        setSlides(fetchedSlides);
+        if (fetchedSlides.length > 0) setCurrentSlideId(fetchedSlides[0].id);
+      }
+    })
+    .catch((err) => console.error('Failed to load presentation:', err));
+}, [id]);
+
+  // Update slide blocks
   const updateBlocks = (newBlocks) => {
-    setSlides((prev) =>
-      prev.map((slide) =>
-        slide.id === currentSlideId ? { ...slide, blocks: newBlocks } : slide
-      )
+    const updatedSlides = slides.map(slide =>
+      slide.id === currentSlideId ? { ...slide, blocks: newBlocks } : slide
     );
+    setSlides(updatedSlides);
+
+    api.patch(`/presentations/${id}`, { slides: updatedSlides })
+      .then(() => console.log('Slides saved'))
+      .catch(console.error);
   };
 
+  // Add new slide
   const addSlide = () => {
     const newSlide = {
       id: uuidv4(),
+      title: `Slide ${slides.length + 1}`,
       blocks: [],
     };
-    setSlides(prev => [...prev, newSlide]);
+    const updatedSlides = [...slides, newSlide];
+    setSlides(updatedSlides);
     setCurrentSlideId(newSlide.id);
+
+    api.patch(`/presentations/${id}`, { slides: updatedSlides })
+      .then(() => console.log('Slide added'))
+      .catch(console.error);
   };
 
-  const removeSlide = (id) => {
+  // Remove current slide
+  const removeSlide = (slideId) => {
     if (slides.length === 1) {
-      alert("Can't delete the only slide");
+      alert("You can't delete the only slide.");
       return;
     }
-    setSlides(prev => prev.filter(slide => slide.id !== id));
-    if (id === currentSlideId) {
-      setCurrentSlideId(slides[0].id);
+
+    const updatedSlides = slides.filter(s => s.id !== slideId);
+    setSlides(updatedSlides);
+
+    if (slideId === currentSlideId) {
+      setCurrentSlideId(updatedSlides[0].id);
     }
+
+    api.patch(`/presentations/${id}`, { slides: updatedSlides })
+      .then(() => console.log('Slide removed'))
+      .catch(console.error);
   };
+
+  // Handle role change
+  // const handleRoleChange = (userId, newRole) => {
+  //   const updatedUsers = users.map(user =>
+  //     user.id === userId ? { ...user, role: newRole } : user
+  //   );
+  //   setUsers(updatedUsers);
+
+  //   api.patch(`/presentations/${id}`, { users: updatedUsers })
+  //     .then(() => console.log('User role updated'))
+  //     .catch(console.error);
+  // };
+
+  const handleRoleChange = (userId, newRole) => {
+  const updatedUsers = users.map(user =>
+    user.id === userId ? { ...user, role: newRole } : user
+  );
+  setUsers(updatedUsers);
+
+  api.patch(`/presentations/${id}`, { users: updatedUsers })
+    .then(() => console.log('User role updated'))
+    .catch(console.error);
+};
+
+
+  const updateSlideTitle = (slideId, newTitle) => {
+  const updatedSlides = slides.map(slide =>
+    slide.id === slideId ? { ...slide, title: newTitle } : slide
+  );
+  setSlides(updatedSlides);
+
+  api.patch(`/presentations/${id}`, { slides: updatedSlides })
+    .then(() => console.log('Slide title updated'))
+    .catch(console.error);
+};
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Top toolbar */}
+      {/* Header */}
       <div className="h-12 bg-white shadow flex items-center justify-between px-4">
         <h1 className="text-xl font-bold">Presentation ID: {id}</h1>
         <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded">
@@ -79,9 +145,9 @@ export default function PresentationRoom() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Slide List + Slide Control */}
+        {/* Slide Sidebar */}
         <div className="w-1/6 border-r overflow-y-auto bg-gray-50 p-2">
-          {isCreator && (
+          {canEdit && (
             <div className="mb-2 flex flex-col gap-2">
               <button
                 onClick={addSlide}
@@ -97,12 +163,22 @@ export default function PresentationRoom() {
               </button>
             </div>
           )}
-          <SlideList
+          {/* <SlideList
             slides={slides}
             currentSlideId={currentSlideId}
             setCurrentSlideId={setCurrentSlideId}
-          />
+          /> */}
+
+   <SlideList
+  slides={slides}
+  currentSlideId={currentSlideId}
+  setCurrentSlideId={setCurrentSlideId}
+  onTitleChange={updateSlideTitle}
+/>
+
+
         </div>
+<h2 className="text-xl font-semibold mb-4">{activeSlide?.title || 'Untitled Slide'}</h2>
 
         {/* Slide Editor */}
         <div className="flex-1 p-4 bg-white overflow-auto">
@@ -114,23 +190,19 @@ export default function PresentationRoom() {
               canEdit={canEdit}
             />
           ) : (
-            <p>No active slide selected</p>
+            <p className="text-center text-gray-500 mt-8">No active slide selected</p>
           )}
         </div>
 
-        {/* Right User List */}
+        {/* User List */}
         <div className="w-1/6 border-l overflow-y-auto bg-gray-50 p-2">
-          <UserList
-            users={users}
-            currentUserId={myUserId}
-            onRoleChange={(userId, newRole) => {
-              setUsers((prev) =>
-                prev.map((user) =>
-                  user.id === userId ? { ...user, role: newRole } : user
-                )
-              );
-            }}
-          />
+         <UserList
+  users={users}
+  currentUserId={myUserId}
+  onRoleChange={handleRoleChange}
+/>
+
+
         </div>
       </div>
     </div>
