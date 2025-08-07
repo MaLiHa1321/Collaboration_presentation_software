@@ -6,14 +6,21 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
+
+const FRONTEND_ORIGIN = 'https://collaboration-presentation-software.vercel.app';
 const io = new Server(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST','PATCH','DELETE'],
+   origin:  [FRONTEND_ORIGIN, 'http://localhost:5000'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    credentials: true
   },
 });
 
 app.use(cors());
+app.use(cors({
+  origin: [FRONTEND_ORIGIN, 'http://localhost:5000'],
+  credentials: true
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
