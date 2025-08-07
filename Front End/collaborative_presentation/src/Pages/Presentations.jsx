@@ -8,8 +8,6 @@ export default function Presentations() {
   const navigate = useNavigate();
   const nickname = localStorage.getItem('nickname');
   const api = useAxiosPublic();
-
-  // ✅ Fetch available presentations on mount
   useEffect(() => {
     api.get('/presentations')
       .then((res) => setPresentations(res.data))
@@ -18,13 +16,9 @@ export default function Presentations() {
         setPresentations([]);
       });
   }, []);
-
-  // ✅ Create new presentation
  const handleCreate = () => {
   if (!nickname) return alert('Nickname not found in localStorage');
-
   console.log('Creating presentation for:', nickname);
-
   api.post('/presentations', {
     title: 'Untitled Presentation',
     creator: {
@@ -42,8 +36,6 @@ export default function Presentations() {
     console.error('Error creating presentation:', err.response || err);
   });
 };
-
-  // ✅ Join an existing presentation by ID
   const handleJoin = () => {
     if (joinId.trim()) {
       navigate(`/presentation/${joinId.trim()}`);
@@ -54,8 +46,6 @@ export default function Presentations() {
     <div className="min-h-screen p-6 bg-gray-100">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Welcome, {nickname || 'Guest'}!</h1>
-
-        {/* Create and Join Section */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <button
             onClick={handleCreate}
@@ -63,7 +53,6 @@ export default function Presentations() {
           >
             + Create New Presentation
           </button>
-
           <div className="flex gap-2 w-full">
             <input
               type="text"
@@ -80,8 +69,6 @@ export default function Presentations() {
             </button>
           </div>
         </div>
-
-        {/* Presentation List */}
         <h2 className="text-xl font-semibold mb-3">Available Presentations:</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {presentations.length > 0 ? presentations.map((p) => (

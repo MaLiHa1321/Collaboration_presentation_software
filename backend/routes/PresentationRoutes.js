@@ -3,7 +3,6 @@ const router = express.Router();
 const Presentation = require('../models/presentation');
 const { v4: uuidv4 } = require('uuid');
 
-// ✅ Create new presentation
 router.post('/', async (req, res) => {
   try {
     const { title, creator } = req.body;
@@ -12,10 +11,9 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Missing creator.id or creator.name' });
     }
 
-    // Assign UUIDs to slide and block
    const defaultSlide = {
   id: uuidv4(),
-  title: 'Welcome Slide',   // give default title
+  title: 'Welcome Slide', 
   blocks: [
     {
       id: uuidv4(),
@@ -27,9 +25,6 @@ router.post('/', async (req, res) => {
     },
   ],
 };
-
-
-    // Full user object with id
     const user = {
       id: creator.id, 
       name: creator.name,
@@ -55,8 +50,6 @@ router.post('/', async (req, res) => {
     res.status(500).json({ message: 'Error creating presentation', error: err.message });
   }
 });
-
-// ✅ Get all presentations (id and title only)
 router.get('/', async (req, res) => {
   try {
     const presentations = await Presentation.find({}, '_id title');
@@ -65,8 +58,6 @@ router.get('/', async (req, res) => {
     res.status(500).json({ message: 'Error fetching presentations', error: err.message });
   }
 });
-
-// ✅ Get one presentation by ID
 router.get('/:id', async (req, res) => {
   try {
     const presentation = await Presentation.findById(req.params.id);
@@ -78,8 +69,6 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ message: 'Error fetching presentation', error: err.message });
   }
 });
-
-// ✅ Update slides, users, or title
 router.patch('/:id', async (req, res) => {
   try {
     const { slides, users, title } = req.body;

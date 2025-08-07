@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const blockSchema = new mongoose.Schema({
-  // removed id here
   x: { type: Number, required: true },
   y: { type: Number, required: true },
   width: { type: Number, required: true },
@@ -15,19 +14,8 @@ const slideSchema = new mongoose.Schema({
   blocks: { type: [blockSchema], default: [] },
 });
 
-
-// const userSchema = new mongoose.Schema({
-
-//   name: { type: String, required: true },
-//   role: {
-//     type: String,
-//     enum: ['Creator', 'Editor', 'Viewer'],
-//     default: 'Viewer',
-//   },
-// });
-
 const userSchema = new mongoose.Schema({
-  id: { type: String, required: true },  // <-- must have this
+  id: { type: String, required: true }, 
   name: { type: String, required: true },
   role: {
     type: String,
@@ -35,7 +23,6 @@ const userSchema = new mongoose.Schema({
     default: 'Viewer',
   },
 });
-
 
 const presentationSchema = new mongoose.Schema(
   {

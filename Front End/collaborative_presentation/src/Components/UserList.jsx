@@ -1,22 +1,17 @@
 
-import React from 'react';
-
 export default function UserList({ users, currentUserId, onRoleChange }) {
   const currentUser = users.find((u) => u.id === currentUserId);
   const canEditRoles = currentUser?.role === 'Creator';
-
   return (
     <div>
       <h2 className="font-bold mb-2">Users</h2>
       {users.map((user) => {
         const isSelf = user.id === currentUserId;
-
         return (
           <div key={user.id} className="mb-2 flex justify-between items-center">
             <span>
               {user.name} ({user.role})
             </span>
-
             {canEditRoles && !isSelf ? (
               <select
                 value={user.role}

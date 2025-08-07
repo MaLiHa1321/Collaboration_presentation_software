@@ -14,7 +14,6 @@ export default function SlideEditor({
   const textareasRef = useRef({});
   const [activeBlockId, setActiveBlockId] = useState(null);
   const saveTimeout = useRef(null);
-
   useEffect(() => {
     setBlocks(initialBlocks || []);
   }, [initialBlocks]);
@@ -36,32 +35,25 @@ export default function SlideEditor({
     const newBlocks = blocks.filter((block) => block.id !== id);
     updateAndSave(newBlocks);
   };
-
   const updateBlock = (id, changes) => {
     const newBlocks = blocks.map((block) =>
       block.id === id ? { ...block, ...changes } : block
     );
     updateAndSave(newBlocks);
   };
-
   const updateAndSave = (newBlocks) => {
     setBlocks(newBlocks);
-    onBlocksChange(newBlocks); // Parent updates DB
+    onBlocksChange(newBlocks);
   };
-
   const applyFormat = (formatType) => {
     if (!activeBlockId || !textareasRef.current[activeBlockId]) return;
-
     const textarea = textareasRef.current[activeBlockId];
     const selectionStart = textarea.selectionStart;
     const selectionEnd = textarea.selectionEnd;
     const selectedText = textarea.value.slice(selectionStart, selectionEnd);
-
     let before = textarea.value.slice(0, selectionStart);
     let after = textarea.value.slice(selectionEnd);
-
     let formatted = selectedText;
-
     switch (formatType) {
       case 'bold':
         formatted = `**${selectedText || 'bold'}**`;
@@ -78,13 +70,9 @@ export default function SlideEditor({
       case 'ul':
         formatted = `- ${selectedText || 'List item'}`;
         break;
-      case 'code':
-        formatted = `\`\`\`\n${selectedText || 'code'}\n\`\`\``;
-        break;
       default:
         break;
     }
-
     const newText = before + formatted + after;
     updateBlock(activeBlockId, { content: newText });
 
@@ -96,7 +84,6 @@ export default function SlideEditor({
 
   return (
     <div className="w-full h-full flex flex-col items-center p-4 bg-gray-100 overflow-auto">
-      {/* Toolbar */}
       <div className="w-full max-w-6xl mb-4 flex items-center justify-between">
         {!presentMode && canEdit && <MarkdownToolbar onFormat={applyFormat} />}
         {!presentMode && canEdit && (
@@ -115,8 +102,6 @@ export default function SlideEditor({
           {presentMode ? 'Exit Present Mode' : 'Present Mode'}
         </button>
       </div>
-
-      {/* Slide Content */}
       <div
         className="relative bg-white border shadow-xl rounded overflow-hidden"
         style={{ width: '1280px', height: '720px' }}
